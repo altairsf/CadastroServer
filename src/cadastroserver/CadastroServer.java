@@ -43,7 +43,7 @@ public class CadastroServer {
             List<Usuario> usuariosList = ctrlUsu.findUsuarioEntities();
             int tamanhoLista = usuariosList.size();
             
-            System.out.println("tamnho=" + tamanhoLista);
+            System.out.println("tamanho=" + tamanhoLista);
             for (Usuario usuario : usuariosList) {
                 System.out.println("login=" + usuario.getLogin());
             }
