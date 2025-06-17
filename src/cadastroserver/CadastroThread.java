@@ -10,52 +10,63 @@ import model.Produto;
 import model.Usuario;
 
 public class CadastroThread extends Thread {
+
     private ProdutoJpaController ctrl;
     private UsuarioJpaController ctrlUsu;
     private Socket s1;
-    
+
     public CadastroThread(ProdutoJpaController ctrl, UsuarioJpaController ctrlUsu, Socket s1) {
         this.ctrl = ctrl;
         this.ctrlUsu = ctrlUsu;
-        this.s1 = s1; 
+        this.s1 = s1;
     }
-    
+
     @Override
     public void run() {
         try (
-            ObjectOutputStream out = new ObjectOutputStream(s1.getOutputStream());
-            ObjectInputStream in = new ObjectInputStream(s1.getInputStream());
-        ) {
+                ObjectOutputStream out = new ObjectOutputStream(s1.getOutputStream()); ObjectInputStream in = new ObjectInputStream(s1.getInputStream());) {
             //Canais de In/Out
             String login = (String) in.readObject();
             String senha = (String) in.readObject();
-            
+
             //Login e senha
             Usuario usuario = ctrlUsu.findUsuario(login, senha);
             if (usuario == null) {
                 out.writeObject("ERRO: Usuário inválido.");
+                out.flush();
                 s1.close();
                 return;
+            } else {
+                out.writeObject("OK");
+                out.flush();
             }
-            
+
             //Validação
             while (true) {
                 String comando = (String) in.readObject();
                 if ("L".equalsIgnoreCase(comando)) {
                     List<Produto> produtos = ctrl.findProdutoEntities();
                     out.writeObject(produtos);
+                    out.flush(); 
+                } else if ("S".equalsIgnoreCase(comando)) {
+                    out.writeObject("Encerrando conexão.");
+                    out.flush();
+                    break;  // Sai do loop e encerra a conexão
                 } else {
                     out.writeObject("Comando desconhecido.");
+                    out.flush(); 
+                    break;
                 }
             }
         } catch (Exception e) {
             System.err.println("Erro na thread: " + e.getMessage());
         } finally {
             try {
-                if (!s1.isClosed()) s1.close();
+                if (!s1.isClosed()) {
+                    s1.close();
+                }
             } catch (Exception e) {
             }
         }
     }
-    
 }

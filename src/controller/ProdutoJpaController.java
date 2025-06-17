@@ -17,7 +17,7 @@ public class ProdutoJpaController implements Serializable {
    public EntityManager getEntityManager() {
         return emf.createEntityManager();
     }
-    
+       
     public List<Produto> findProdutoEntities() {
         EntityManager em = getEntityManager();
         try {
@@ -27,5 +27,4 @@ public class ProdutoJpaController implements Serializable {
             em.close();
         }
     }
-   
 }
