@@ -8,6 +8,7 @@ import java.io.Serializable;
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
+import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
@@ -39,7 +40,7 @@ public class Movimento implements Serializable {
     @Column(name = "tipo")
     private String tipo;
     @Column(name = "valorUnitario")
-    private Long valorUnitario;
+    private Integer valorUnitario;
     @JoinColumn(name = "Pessoa_idPessoa", referencedColumnName = "idPessoa", insertable = false, updatable = false)
     @ManyToOne(optional = false)
     private Pessoa pessoa;
@@ -52,7 +53,7 @@ public class Movimento implements Serializable {
 
     public Movimento() {
     }
-
+   
     public Movimento(MovimentoPK movimentoPK) {
         this.movimentoPK = movimentoPK;
     }
@@ -85,11 +86,11 @@ public class Movimento implements Serializable {
         this.tipo = tipo;
     }
 
-    public Long getValorUnitario() {
+    public Integer getValorUnitario() {
         return valorUnitario;
     }
 
-    public void setValorUnitario(Long valorUnitario) {
+    public void setValorUnitario(Integer valorUnitario) {
         this.valorUnitario = valorUnitario;
     }
 

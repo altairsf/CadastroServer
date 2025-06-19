@@ -1,23 +1,34 @@
 package cadastroserver;
 
+import controller.MovimentoJpaController;
+import controller.PessoaJpaController;
 import controller.ProdutoJpaController;
 import controller.UsuarioJpaController;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.List;
+import model.Movimento;
+import model.MovimentoPK;
+import model.Pessoa;
 import model.Produto;
 import model.Usuario;
 
 public class CadastroThread extends Thread {
 
-    private ProdutoJpaController ctrl;
+    //private ProdutoJpaController ctrl;
+    private ProdutoJpaController ctrlProd;
     private UsuarioJpaController ctrlUsu;
+    private MovimentoJpaController ctrlMov;
+    private PessoaJpaController ctrlPessoa;
     private Socket s1;
 
-    public CadastroThread(ProdutoJpaController ctrl, UsuarioJpaController ctrlUsu, Socket s1) {
-        this.ctrl = ctrl;
+    public CadastroThread(ProdutoJpaController ctrlProd, UsuarioJpaController ctrlUsu, 
+        MovimentoJpaController ctrlMov, PessoaJpaController ctrlPessoa, Socket s1) {
+        this.ctrlProd = ctrlProd;
         this.ctrlUsu = ctrlUsu;
+        this.ctrlMov = ctrlMov;
+        this.ctrlPessoa = ctrlPessoa;   
         this.s1 = s1;
     }
 
@@ -45,17 +56,67 @@ public class CadastroThread extends Thread {
             while (true) {
                 String comando = (String) in.readObject();
                 if ("L".equalsIgnoreCase(comando)) {
-                    List<Produto> produtos = ctrl.findProdutoEntities();
+                    List<Produto> produtos = ctrlProd.findProdutoEntities();
                     out.writeObject(produtos);
                     out.flush(); 
-                } else if ("S".equalsIgnoreCase(comando)) {
+                } else if ("E".equalsIgnoreCase(comando) || "S".equalsIgnoreCase(comando)) {
+                    //Criar o movimento
+                    Movimento mov = new Movimento();
+                    
+                    //ID do movimento
+                    int idMovimento = (int) in.readObject();
+                    
+                    mov.setUsuario(usuario);
+                    mov.setTipo(comando);
+                    
+                    //Id da pessoa
+                    int idPessoa = (int) in.readObject();
+                    Pessoa pessoa = ctrlPessoa.findPessoa(idPessoa);
+                    mov.setPessoa(pessoa);
+                    
+                    // Id do produto
+                    int idProduto = (int) in.readObject();
+                    Produto produto = ctrlProd.findProduto(idProduto);
+                    mov.setProduto(produto);
+                    
+                    // Quantidade
+                    int quantidade = (int) in.readObject();
+                    mov.setQuantidade(quantidade);
+
+                    // Valor unitário
+                    int valorUnitario = (int) in.readObject();
+                    mov.setValorUnitario(valorUnitario);
+                    
+                    // Montar o PK 
+                    MovimentoPK pk = new MovimentoPK(
+                        idMovimento,
+                        usuario.getIdUsuario(),
+                        idProduto,
+                        idPessoa
+                    );
+                    mov.setMovimentoPK(pk);
+
+                    // Persistir o movimento
+                    ctrlMov.create(mov);
+                    
+                    // Atualizar estoque
+                    if ("E".equalsIgnoreCase(comando)) {
+                        produto.setQuantidade(produto.getQuantidade() + quantidade);
+                    } else if ("S".equalsIgnoreCase(comando)) {
+                        produto.setQuantidade(produto.getQuantidade() - quantidade);
+                    }
+                    ctrlProd.edit(produto);
+                    
+                    out.writeObject("Movimento registrado com sucesso.");
+                    out.flush();
+                    
+                } else if ("SAIR".equalsIgnoreCase(comando)) {
                     out.writeObject("Encerrando conexão.");
                     out.flush();
-                    break;  // Sai do loop e encerra a conexão
+                    break;
                 } else {
                     out.writeObject("Comando desconhecido.");
                     out.flush(); 
-                    break;
                 }
             }
         } catch (Exception e) {
