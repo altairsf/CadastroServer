@@ -7,7 +7,11 @@ import controller.UsuarioJpaController;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.List;
+import java.util.Locale;
 import model.Movimento;
 import model.MovimentoPK;
 import model.Pessoa;
@@ -23,15 +27,22 @@ public class CadastroThread extends Thread {
     private PessoaJpaController ctrlPessoa;
     private Socket s1;
 
-    public CadastroThread(ProdutoJpaController ctrlProd, UsuarioJpaController ctrlUsu, 
-        MovimentoJpaController ctrlMov, PessoaJpaController ctrlPessoa, Socket s1) {
+    public CadastroThread(ProdutoJpaController ctrlProd, UsuarioJpaController ctrlUsu,
+            MovimentoJpaController ctrlMov, PessoaJpaController ctrlPessoa, Socket s1) {
         this.ctrlProd = ctrlProd;
         this.ctrlUsu = ctrlUsu;
         this.ctrlMov = ctrlMov;
-        this.ctrlPessoa = ctrlPessoa;   
+        this.ctrlPessoa = ctrlPessoa;
         this.s1 = s1;
     }
 
+    private String getDayTime() {
+        LocalDateTime now = LocalDateTime.now();
+        String day = now.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+        String time = now.format(DateTimeFormatter.ofPattern("HH:mm"));
+        return day + " " + time;
+    }
+    
     @Override
     public void run() {
         try (
@@ -48,7 +59,7 @@ public class CadastroThread extends Thread {
                 s1.close();
                 return;
             } else {
-                out.writeObject("OK");
+                out.writeObject("Usuário conectado com sucesso em " + getDayTime());
                 out.flush();
             }
 
@@ -58,27 +69,27 @@ public class CadastroThread extends Thread {
                 if ("L".equalsIgnoreCase(comando)) {
                     List<Produto> produtos = ctrlProd.findProdutoEntities();
                     out.writeObject(produtos);
-                    out.flush(); 
+                    out.flush();
                 } else if ("E".equalsIgnoreCase(comando) || "S".equalsIgnoreCase(comando)) {
                     //Criar o movimento
                     Movimento mov = new Movimento();
-                    
+
                     //ID do movimento
                     int idMovimento = (int) in.readObject();
-                    
+
                     mov.setUsuario(usuario);
                     mov.setTipo(comando);
-                    
+
                     //Id da pessoa
                     int idPessoa = (int) in.readObject();
                     Pessoa pessoa = ctrlPessoa.findPessoa(idPessoa);
                     mov.setPessoa(pessoa);
-                    
+
                     // Id do produto
                     int idProduto = (int) in.readObject();
                     Produto produto = ctrlProd.findProduto(idProduto);
                     mov.setProduto(produto);
-                    
+
                     // Quantidade
                     int quantidade = (int) in.readObject();
                     mov.setQuantidade(quantidade);
@@ -86,7 +97,7 @@ public class CadastroThread extends Thread {
                     // Valor unitário
                     int valorUnitario = (int) in.readObject();
                     mov.setValorUnitario(valorUnitario);
-                    
+
                     // Montar o PK 
                     MovimentoPK pk = new MovimentoPK(
                         idMovimento,
@@ -98,7 +109,7 @@ public class CadastroThread extends Thread {
 
                     // Persistir o movimento
                     ctrlMov.create(mov);
-                    
+
                     // Atualizar estoque
                     if ("E".equalsIgnoreCase(comando)) {
                         produto.setQuantidade(produto.getQuantidade() + quantidade);
@@ -106,17 +117,20 @@ public class CadastroThread extends Thread {
                         produto.setQuantidade(produto.getQuantidade() - quantidade);
                     }
                     ctrlProd.edit(produto);
-                    
-                    out.writeObject("Movimento registrado com sucesso.");
+
+                    out.writeObject("Movimento registrado com sucesso." + getDayTime());
                     out.flush();
-                    
+                    List<Produto> produtosAtualizados = ctrlProd.findProdutoEntities();
+                    out.writeObject(produtosAtualizados);
+                    out.flush();
+
                 } else if ("SAIR".equalsIgnoreCase(comando)) {
                     out.writeObject("Encerrando conexão.");
                     out.flush();
                     break;
                 } else {
                     out.writeObject("Comando desconhecido.");
-                    out.flush(); 
+                    out.flush();
                 }
             }
         } catch (Exception e) {
